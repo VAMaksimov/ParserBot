@@ -95,7 +95,7 @@ def check_and_send_updates():
 
 
 def main():
-    application = Application.builder().tokern(BOT_TOKEN).build()
+    application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start_command))
 
     print("Bot is running. Send /start to register your chat ID.")
