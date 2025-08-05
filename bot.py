@@ -1,26 +1,28 @@
+import asyncio
+from datetime import datetime
+import os
+import pickle
 import requests
 from bs4 import BeautifulSoup
 import telegram
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
-import pickle
-import os
-from datetime import datetime
 
 BOT_TOKEN = '8373116013:AAFLZaCXXhHwEXQIVqgClCvL_5gVm8-EclQ'
 CHAT_ID_STORAGE_FILE = 'chat_id.pkl'
 URL_TO_PARSE = 'https://it.fut.ru/internship'
 PREVIOUS_INTERNSHIPS_STORAGE_FILE = 'previous_internships.pkl'
 INTERNSHIP_DIV_CLASS = 'sc-897afcd6-2 cqKYHt'
+INTERNSHIP_DESCRIPTION_CLASS = 'sc-cee2505b-8 epPwjV'
 
-def load_chat_id():
+def load_chat_id() -> int:
     if os.path.exists(CHAT_ID_STORAGE_FILE):
         with open(CHAT_ID_STORAGE_FILE, 'rb') as file_object:
             return pickle.load(file_object)
     return None
 
 
-def save_chat_id(chat_id):
+def save_chat_id(chat_id : int):
     with open(CHAT_ID_STORAGE_FILE, 'wb') as file_object:
         pickle.dump(chat_id, file_object)
 
@@ -44,8 +46,14 @@ def fetch_internships() -> set:
     current_internships = set()
     for item in internships:
         title = item.find('h2').text.strip() if item.find('h2') else 'Unknown Title'
-        link = item.find('a')['href'] if item.find('a') else ''
-        current_internships.add(f"{title}|{link}")
+        description = item.find('section', class_=INTERNSHIP_DESCRIPTION_CLASS).text.strip() if item.find('section', class_=INTERNSHIP_DESCRIPTION_CLASS) else 'Unknown Description'
+        period = item.find('time').text.strip() if item.find('time') else 'Unknown Period'
+        current_internships.add(
+            f"**{title}**\n"
+            f"{description}\n"
+            f"{period}\n"
+            f"{URL_TO_PARSE}\n\n"
+        )
     
     return current_internships
 
@@ -78,6 +86,12 @@ def check_and_send_updates():
         return
 
     current_internships : set = fetch_internships()
+
+    if not current_internships:
+        asyncio.run(send_telegram_message(bot, "No objects of given class found.", chat_id))
+        print("No objects of given class found.")
+        return
+
     new_internships : set = current_internships - load_previous_internships()
     save_internships(current_internships)
 
@@ -87,10 +101,10 @@ def check_and_send_updates():
             title, link = item.split('|')
             update_message += f"- {title}: {link}\n"
         
-        import asyncio
         asyncio.run(send_telegram_message(bot, update_message, chat_id))
         print("Update sent to Telegram.")
     else:
+        asyncio.run(send_telegram_message(bot, "No new internships found.", chat_id))
         print("No new internships found.")
 
 
