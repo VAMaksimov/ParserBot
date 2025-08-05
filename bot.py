@@ -1,87 +1,113 @@
 import requests
 from bs4 import BeautifulSoup
 import telegram
-import telegram.ext
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackContext
 import pickle
 import os
 from datetime import datetime
 
 BOT_TOKEN = '8373116013:AAFLZaCXXhHwEXQIVqgClCvL_5gVm8-EclQ'
+CHAT_ID_STORAGE_FILE = 'chat_id.pkl'
+URL_TO_PARSE = 'https://it.fut.ru/internship'
+PREVIOUS_INTERNSHIPS_STORAGE_FILE = 'previous_internships.pkl'
+INTERNSHIP_DIV_CLASS = 'sc-897afcd6-2 cqKYHt'
 
-# Replace with your Telegram chat ID (e.g., your user ID or channel ID)
-# To find your chat ID, send a message to your bot and use a service like @getidsbot
-CHAT_ID = 'YOUR_CHAT_ID_HERE'
+def load_chat_id():
+    if os.path.exists(CHAT_ID_STORAGE_FILE):
+        with open(CHAT_ID_STORAGE_FILE, 'rb') as file_object:
+            return pickle.load(file_object)
+    return None
 
-# URL to scrape
-URL = 'https://it.fut.ru/internship'
 
-# File to store previous internships for comparison
-STORAGE_FILE = 'previous_internships.pkl'
+def save_chat_id(chat_id):
+    with open(CHAT_ID_STORAGE_FILE, 'wb') as file_object:
+        pickle.dump(chat_id, file_object)
 
-# Assume the internships are in divs with class 'vacancy-card' or similar;
-# Inspect the page source to confirm the exact class name
-INTERNSHIP_CLASS = 'vacancy-card'  # Placeholder; update based on actual HTML
+
+async def start_command(update: Update, context: CallbackContext) -> None:
+    chat_id = update.message.chat.id
+    save_chat_id(chat_id)
+    await update.message.reply_text(
+        f"Hello! Your chat ID ({chat_id}) has been saved. "
+        f"You will now receive internship updates from this bot."
+    )
+    print(f"Chat ID saved: {chat_id}")
+
 
 def fetch_internships():
-    response = requests.get(URL)
+    response = requests.get(URL_TO_PARSE)
     response.raise_for_status()  # Raise error if fetch fails
-    soup = BeautifulSoup(response.text, 'html.parser')
+
+    internships : list = BeautifulSoup(response.text, 'html.parser').find_all('div', class_=INTERNSHIP_DIV_CLASS)
     
-    # Find all elements with the specified class
-    internships = soup.find_all('div', class_=INTERNSHIP_CLASS)
-    
-    # Extract relevant info, e.g., title and link; adjust based on structure
     current_internships = set()
     for item in internships:
-        title = item.find('h3').text.strip() if item.find('h3') else 'Unknown Title'
+        title = item.find('h2').text.strip() if item.find('h2') else 'Unknown Title'
         link = item.find('a')['href'] if item.find('a') else ''
-        # Use a unique identifier, e.g., title + link
-        identifier = f"{title}|{link}"
-        current_internships.add(identifier)
+        current_internships.add(f"{title}|{link}")
     
     return current_internships
 
+
 def load_previous_internships():
-    if os.path.exists(STORAGE_FILE):
-        with open(STORAGE_FILE, 'rb') as f:
-            return pickle.load(f)
+    if os.path.exists(PREVIOUS_INTERNSHIPS_STORAGE_FILE):
+        with open(PREVIOUS_INTERNSHIPS_STORAGE_FILE, 'rb') as file_object:
+            return pickle.load(file_object)
     return set()
 
+
 def save_internships(internships):
-    with open(STORAGE_FILE, 'wb') as f:
-        pickle.dump(internships, f)
+    with open(PREVIOUS_INTERNSHIPS_STORAGE_FILE, 'wb') as file_object:
+        pickle.dump(internships, file_object)
 
-async def send_telegram_message(bot, message):
-    await bot.send_message(chat_id=CHAT_ID, text=message)
 
-def main():
-    # Initialize the bot [[5]] (GitHub repo for python-telegram-bot)
+async def send_telegram_message(bot, message, chat_id):
+    if chat_id:
+        await bot.send_message(chat_id=chat_id, text=message)
+    else:
+        print("No chat ID found. User needs to start the bot first with /start command.")
+
+
+def check_and_send_updates():
     bot = telegram.Bot(token=BOT_TOKEN)
-    
-    # Fetch current internships
-    current = fetch_internships()
-    
-    # Load previous
-    previous = load_previous_internships()
-    
-    # Find new ones
-    new_internships = current - previous
-    
+    chat_id = load_chat_id()
+
+    if not chat_id:
+        print("No chat ID found. User needs to start the bot first with /start command.")
+        return
+
+    current_internships : set = fetch_internships()
+    new_internships : set = current_internships - load_previous_internships()
+    save_internships(current_internships)
+
     if new_internships:
         update_message = f"New internships found on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:\n"
         for item in new_internships:
             title, link = item.split('|')
             update_message += f"- {title}: {link}\n"
         
-        # Send update via Telegram [[7]] (example of sending updates to Telegram bot/channel)
         import asyncio
-        asyncio.run(send_telegram_message(bot, update_message))
+        asyncio.run(send_telegram_message(bot, update_message, chat_id))
         print("Update sent to Telegram.")
     else:
         print("No new internships found.")
+
+
+def main():
+    application = Application.builder().tokern(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start_command))
+
+    print("Bot is running. Send /start to register your chat ID.")
+    print("Press Ctrl+C to stop the bot.")
+
+    application.run_polling()
     
-    # Save current as previous for next run
-    save_internships(current)
 
 if __name__ == '__main__':
-    main()
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        check_and_send_updates()
+    else:
+        main()
