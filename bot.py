@@ -35,7 +35,7 @@ async def start_command(update: Update, context: CallbackContext) -> None:
     print(f"Chat ID saved: {chat_id}")
 
 
-def fetch_internships():
+def fetch_internships() -> set:
     response = requests.get(URL_TO_PARSE)
     response.raise_for_status()  # Raise error if fetch fails
 
@@ -50,7 +50,7 @@ def fetch_internships():
     return current_internships
 
 
-def load_previous_internships():
+def load_previous_internships() -> set:
     if os.path.exists(PREVIOUS_INTERNSHIPS_STORAGE_FILE):
         with open(PREVIOUS_INTERNSHIPS_STORAGE_FILE, 'rb') as file_object:
             return pickle.load(file_object)
