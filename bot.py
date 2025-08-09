@@ -13,7 +13,7 @@ CHAT_ID_STORAGE_FILE = 'chat_id.pkl'
 URL_TO_PARSE = 'https://it.fut.ru/internship'
 PREVIOUS_INTERNSHIPS_STORAGE_FILE = 'previous_internships.pkl'
 INTERNSHIP_DIV_CLASS = 'sc-897afcd6-2 cqKYHt'
-INTERNSHIP_DESCRIPTION_CLASS = 'sc-cee2505b-8 epPwjV'
+INTERNSHIP_DESCRIPTION_CLASS = 'sc-5cf084eb-8 ihoQtV'
 
 def load_chat_id() -> int:
     if os.path.exists(CHAT_ID_STORAGE_FILE):

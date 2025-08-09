@@ -16,7 +16,10 @@ crontab options:
 
 manual check:
 ```
-docker run --rm -v bot-data:/app --mount type=bind,source=$(pwd)/bot.py,target=/app/bot.py telegram-internship-bot python /app/bot.py check
+docker exec internship-bot bash -c "rm /app/previous_internships.pkl"
+docker exec internship-bot bash python /app/bot.py check
+<!-- OR -->
+docker run --rm -v bot-data:/app --mount type=bind,source=$(pwd)/bot.py,target=/app/bot.py parser-bot python /app/bot.py check
 ```
 
 options for debug:
