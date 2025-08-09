@@ -8,9 +8,8 @@ else
     echo "bot-data volume already exists, skipping creation"
 fi
 
-# TO DO: properly mount bot.py
 docker run -d --name ${CONTAINER_NAME} \
   -v bot-data:/app \
-  --mount type=bind,source=/host/path/to/bot.py,target=/app/bot.py \
+  --mount type=bind,source=$(pwd)/bot.py,target=/app/bot.py \
   --restart unless-stopped \
   ${IMAGE_NAME}

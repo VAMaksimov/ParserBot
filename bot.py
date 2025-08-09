@@ -98,8 +98,7 @@ def check_and_send_updates():
     if new_internships:
         update_message = f"New internships found on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:\n"
         for item in new_internships:
-            title, link = item.split('|')
-            update_message += f"- {title}: {link}\n"
+            update_message += item
         
         asyncio.run(send_telegram_message(bot, update_message, chat_id))
         print("Update sent to Telegram.")
