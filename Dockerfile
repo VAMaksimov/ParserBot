@@ -2,7 +2,7 @@ FROM python:3.12-alpine
 WORKDIR /app
 
 COPY requirements.txt .
-# COPY bot.py .
+COPY bot.py .
 
 RUN python -m venv venv
 RUN source venv/bin/activate

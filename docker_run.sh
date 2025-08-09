@@ -11,6 +11,6 @@ fi
 # TO DO: properly mount bot.py
 docker run -d --name ${CONTAINER_NAME} \
   -v bot-data:/app \
-  -v bot.py:/app/bot.py \
+  --mount type=bind,source=/host/path/to/bot.py,target=/app/bot.py \
   --restart unless-stopped \
   ${IMAGE_NAME}
